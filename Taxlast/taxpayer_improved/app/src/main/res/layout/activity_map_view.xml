@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background"
+    tools:context=".ui.MapViewActivity">
+
+    <!-- شريط الأدوات -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/primary"
+        app:title="@string/map_view"
+        app:titleTextColor="@color/textOnPrimary"
+        app:navigationIcon="?attr/homeAsUpIndicator"
+        app:navigationIconTint="@color/textOnPrimary" />
+
+    <!-- معلومات المكلف فوق الخريطة -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/padding_medium"
+        android:background="@color/surface"
+        android:elevation="4dp">
+
+        <TextView
+            android:id="@+id/tvMapTaxpayerName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_subtitle"
+            android:textStyle="bold"
+            android:textColor="@color/textPrimary"
+            tools:text="محمد أحمد الحسن" />
+
+        <TextView
+            android:id="@+id/tvMapCoordinates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_small"
+            android:textColor="@color/textSecondary"
+            tools:text="33.51234567, 36.29876543" />
+
+    </LinearLayout>
+
+    <!-- الخريطة -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/mapView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- مؤشر التحميل -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <!-- زر فتح Google Maps -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnOpenExternal"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_medium"
+        android:text="@string/open_in_google_maps"
+        app:icon="@drawable/ic_location"
+        app:iconGravity="textStart" />
+
+</LinearLayout>

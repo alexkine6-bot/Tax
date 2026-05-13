@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ألوان أساسية -->
+    <color name="primary">#1565C0</color>
+    <color name="primaryDark">#0D47A1</color>
+    <color name="primaryLight">#42A5F5</color>
+    <color name="accent">#FF6F00</color>
+
+    <!-- ألوان النصوص -->
+    <color name="textPrimary">#212121</color>
+    <color name="textSecondary">#757575</color>
+    <color name="textOnPrimary">#FFFFFF</color>
+
+    <!-- ألوان الخلفية -->
+    <color name="background">#F5F5F5</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="cardBackground">#FFFFFF</color>
+
+    <!-- ألوان النوع (قديم / جديد) -->
+    <color name="oldType">#E65100</color>
+    <color name="oldTypeBackground">#FFF3E0</color>
+    <color name="newType">#1B5E20</color>
+    <color name="newTypeBackground">#E8F5E9</color>
+
+    <!-- ألوان الحالة -->
+    <color name="success">#2E7D32</color>
+    <color name="warning">#F57C00</color>
+    <color name="error">#C62828</color>
+    <color name="info">#1565C0</color>
+
+    <!-- ألوان دقة GPS -->
+    <color name="accuracyExcellent">#2E7D32</color>
+    <color name="accuracyGood">#1565C0</color>
+    <color name="accuracyMedium">#F57C00</color>
+    <color name="accuracyPoor">#C62828</color>
+
+    <!-- ألوان متنوعة -->
+    <color name="divider">#E0E0E0</color>
+    <color name="ripple">#1F000000</color>
+    <color name="statusBarColor">#0D47A1</color>
+</resources>
