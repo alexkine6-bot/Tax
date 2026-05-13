@@ -8,17 +8,21 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStream
-import java.io.InputStreamReader
 
 /**
  * مساعد استيراد CSV المحسّن
  *
+ * يدعم بنية ملف Access المُصدَّر (سجلات_الدخل_المقطوع):
+ * السجل, اسم المكلف, اسم الأم, رقم القرار, تاريخ القرار,
+ * الملاحظات, المهنة, العنوان, مقدار الضريبة, رقم العمل, الربح الصافي
+ *
  * التحسينات:
- * 1. قراءة سطر بسطر (Streaming) بدلاً من readLines() التي تحمّل كل شيء في الذاكرة
- * 2. دعم UTF-8 مع BOM (شائع في ملفات Excel العربية)
- * 3. فحص coroutine.isActive لإمكانية الإلغاء من الخارج
- * 4. تقرير مفصّل: مضاف / محدّث / مخطوء / مكتمل
- * 5. محلل CSV صحيح يتعامل مع الاقتباسات المزدوجة والفواصل داخل الحقول
+ * 1. قراءة سطر بسطر (Streaming)
+ * 2. دعم UTF-8 مع BOM
+ * 3. فحص coroutine.isActive للإلغاء
+ * 4. محلل CSV صحيح (RFC 4180)
+ * 5. ربط الأعمدة بالاسم (مرن)
+ * 6. دعم جميع الأعمدة الجديدة من Access
  */
 class ImportHelper(
     private val db: DatabaseHelper
@@ -26,7 +30,7 @@ class ImportHelper(
 
     companion object {
         private const val TAG = "ImportHelper"
-        private const val PROGRESS_INTERVAL = 50 // تحديث شريط التقدم كل 50 سطر
+        private const val PROGRESS_INTERVAL = 50
     }
 
     // ── واجهة متابعة التقدم ───────────────────────────────────────────────────
@@ -48,12 +52,6 @@ class ImportHelper(
 
     // ── الاستيراد الرئيسي ─────────────────────────────────────────────────────
 
-    /**
-     * تنسيق CSV المتوقع (كما في taxpayers_data.csv):
-     * السجل, اسم المكلف, اسم الأم, رقم القرار, تاريخ القرار,
-     * الملاحظات, المهنة, العنوان, قرار 2015, تاريخ 2015,
-     * مقدار الضريبة, رقم العمل, الربح الصافي
-     */
     suspend fun importFromCsv(
         inputStream: InputStream,
         listener: ImportListener
@@ -66,31 +64,30 @@ class ImportHelper(
         var lineNum = 0
 
         try {
-            // دعم BOM (Byte Order Mark) الذي يضيفه Excel لملفات UTF-8
             val reader = inputStream
                 .bufferedReader(Charsets.UTF_8)
                 .let { BomAwareBR(it) }
 
             var headerLine = reader.readLine()
             if (headerLine == null) {
-                listener.onError("الملف فارغ")
+                withContext(Dispatchers.Main) { listener.onError("الملف فارغ") }
                 return@withContext
             }
 
-            // تخطّي BOM إن وجد
+            // تخطّي BOM
             if (headerLine.startsWith("\uFEFF")) headerLine = headerLine.substring(1)
 
-            // تحديد أعمدة الرأس (مرن — لا يعتمد على الترتيب الثابت)
+            // تحديد الأعمدة (مرن — بالاسم لا بالترتيب)
             val headers = parseCsvLine(headerLine).map { it.trim() }
             val colMap  = buildColumnMap(headers)
 
             Log.i(TAG, "CSV Headers: $headers")
             Log.i(TAG, "Column map: $colMap")
 
-            // قراءة سطر بسطر (Streaming)
+            // قراءة سطر بسطر
             var line = reader.readLine()
             while (line != null) {
-                if (!isActive) break  // إلغاء إن طلب المستخدم ذلك
+                if (!isActive) break
                 lineNum++
 
                 if (line.isBlank()) { line = reader.readLine(); continue }
@@ -103,20 +100,11 @@ class ImportHelper(
                         continue
                     }
 
-                    val existing = db.findTaxpayerForUpdateAsync(
-                        taxpayer.name,
-                        taxpayer.accessDecisionNo
-                    )
+                    // فحص التكرار: بالاسم + رقم القرار أو رقم السجل
+                    val existing = findExisting(taxpayer)
 
                     if (existing != null) {
-                        db.updateTaxpayerAsync(
-                            existing.copy(
-                                activityType = taxpayer.activityType.ifBlank { existing.activityType },
-                                address      = taxpayer.address.ifBlank { existing.address },
-                                notes        = taxpayer.notes.ifBlank { existing.notes },
-                                accessDecisionNo = taxpayer.accessDecisionNo
-                            )
-                        )
+                        db.updateTaxpayerAsync(mergeRecords(existing, taxpayer))
                         updated++
                     } else {
                         db.insertTaxpayerAsync(taxpayer)
@@ -127,9 +115,7 @@ class ImportHelper(
                     errors++
                 }
 
-                // تحديث التقدم كل PROGRESS_INTERVAL سطر
                 if (lineNum % PROGRESS_INTERVAL == 0) {
-                    val snapshot = ImportResult(added, updated, skipped, errors)
                     withContext(Dispatchers.Main) {
                         listener.onProgress(lineNum, lineNum + 100, added, updated)
                     }
@@ -150,9 +136,40 @@ class ImportHelper(
         }
     }
 
+    // ── البحث عن سجل مكرر ────────────────────────────────────────────────────
+
+    private suspend fun findExisting(taxpayer: Taxpayer): Taxpayer? {
+        // أولاً: البحث بالاسم + رقم السجل
+        if (taxpayer.recordNumber > 0) {
+            val byRecord = db.findByNameAndRecordAsync(taxpayer.name, taxpayer.recordNumber)
+            if (byRecord != null) return byRecord
+        }
+        // ثانياً: البحث بالاسم + رقم القرار
+        if (taxpayer.accessDecisionNo.isNotBlank()) {
+            val byDecision = db.findTaxpayerForUpdateAsync(taxpayer.name, taxpayer.accessDecisionNo)
+            if (byDecision != null) return byDecision
+        }
+        return null
+    }
+
+    /** دمج بيانات السجل الجديد مع الموجود (الحقل الجديد يأخذ أولوية إن لم يكن فارغاً) */
+    private fun mergeRecords(existing: Taxpayer, incoming: Taxpayer): Taxpayer {
+        return existing.copy(
+            motherName       = incoming.motherName.ifBlank { existing.motherName },
+            activityType     = incoming.activityType.ifBlank { existing.activityType },
+            address          = incoming.address.ifBlank { existing.address },
+            notes            = incoming.notes.ifBlank { existing.notes },
+            accessDecisionNo = incoming.accessDecisionNo.ifBlank { existing.accessDecisionNo },
+            decisionDate     = incoming.decisionDate.ifBlank { existing.decisionDate },
+            taxAmount        = if (incoming.taxAmount > 0) incoming.taxAmount else existing.taxAmount,
+            workNumber       = incoming.workNumber.ifBlank { existing.workNumber },
+            netProfit        = if (incoming.netProfit > 0) incoming.netProfit else existing.netProfit,
+            recordNumber     = if (incoming.recordNumber > 0) incoming.recordNumber else existing.recordNumber
+        )
+    }
+
     // ── ربط الأعمدة بالمفاتيح ────────────────────────────────────────────────
 
-    /** بناء خريطة من اسم العمود → رقم الفهرس (مرن وغير حساس للمسافات) */
     private fun buildColumnMap(headers: List<String>): Map<String, Int> {
         val map = mutableMapOf<String, Int>()
         headers.forEachIndexed { i, h ->
@@ -162,7 +179,10 @@ class ImportHelper(
         return map
     }
 
-    /** بناء Taxpayer من الأجزاء مع خريطة الأعمدة */
+    /**
+     * بناء Taxpayer من أجزاء CSV مع خريطة الأعمدة
+     * يدعم أسماء أعمدة متعددة لكل حقل (مرونة)
+     */
     private fun buildTaxpayer(parts: List<String>, colMap: Map<String, Int>): Taxpayer? {
         fun col(vararg names: String): String {
             for (name in names) {
@@ -172,27 +192,43 @@ class ImportHelper(
             return ""
         }
 
-        val name = col("اسم المكلف", "الاسم")
-        if (name.isBlank()) return null  // سطر بلا اسم → تخطّي
+        fun colLong(vararg names: String): Long {
+            val value = col(*names)
+            return value.replace(",", "").replace(".", "").toLongOrNull() ?: 0
+        }
+
+        fun colInt(vararg names: String): Int {
+            val value = col(*names)
+            return value.replace(",", "").toIntOrNull() ?: 0
+        }
+
+        val name = col("اسم المكلف", "الاسم", "Name")
+        if (name.isBlank()) return null
 
         return Taxpayer(
+            recordNumber     = colInt("السجل", "رقم السجل", "Record"),
             name             = name,
-            accessDecisionNo = col("رقم القرار"),
-            activityType     = col("المهنة", "نوع النشاط"),
-            address          = col("العنوان"),
-            notes            = col("الملاحظات"),
-            type             = Taxpayer.TYPE_OLD  // البيانات المستوردة قديمة افتراضياً
+            motherName       = col("اسم الأم", "اسم الام", "Mother"),
+            accessDecisionNo = col("رقم القرار", "القرار", "Decision"),
+            decisionDate     = col("تاريخ القرار", "التاريخ", "Date"),
+            notes            = col("الملاحظات", "ملاحظات", "Notes"),
+            activityType     = col("المهنة", "نوع النشاط", "Activity"),
+            address          = col("العنوان", "المنطقة", "Address"),
+            taxAmount        = colLong("مقدار الضريبة", "الضريبة", "Tax"),
+            workNumber       = col("رقم العمل", "العمل", "Work"),
+            netProfit        = colLong("الربح الصافي", "الربح", "Profit"),
+            taxNumber        = col("الرقم الضريبي", "رقم ضريبي"),
+            phone            = col("الهاتف", "رقم الهاتف", "Phone"),
+            type             = when {
+                col("الملاحظات", "ملاحظات").contains("حديث") -> Taxpayer.TYPE_NEW
+                col("النوع", "Type") == Taxpayer.TYPE_NEW -> Taxpayer.TYPE_NEW
+                else -> Taxpayer.TYPE_OLD
+            }
         )
     }
 
-    // ── محلل CSV صحيح ────────────────────────────────────────────────────────
+    // ── محلل CSV صحيح (RFC 4180) ────────────────────────────────────────────
 
-    /**
-     * محلل RFC 4180:
-     * - يتعامل مع الحقول المحاطة بـ "..."
-     * - يتعامل مع "" داخل الحقل كعلامة اقتباس واحدة
-     * - يدعم الفواصل داخل الحقول المقتبسة
-     */
     private fun parseCsvLine(line: String): List<String> {
         val result    = mutableListOf<String>()
         val current   = StringBuilder()
@@ -204,7 +240,6 @@ class ImportHelper(
             when {
                 ch == '"' && !inQuotes -> inQuotes = true
                 ch == '"' && inQuotes  -> {
-                    // "" داخل حقل مقتبس = علامة اقتباس واحدة
                     if (i + 1 < line.length && line[i + 1] == '"') {
                         current.append('"')
                         i++

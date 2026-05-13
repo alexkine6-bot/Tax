@@ -75,14 +75,41 @@ class DetailActivity : AppCompatActivity() {
             with(binding) {
                 tvName.text         = t.name
                 tvTaxNumber.text    = buildString {
-                    append(t.taxNumber.ifBlank { "غير محدد" })
-                    if (t.accessDecisionNo.isNotBlank()) append(" | قرار: ${t.accessDecisionNo}")
+                    if (t.recordNumber > 0) append("سجل: ${t.recordNumber}")
+                    if (t.accessDecisionNo.isNotBlank()) {
+                        if (isNotEmpty()) append(" | ")
+                        append("قرار: ${t.accessDecisionNo}")
+                    }
+                    if (t.taxNumber.isNotBlank()) {
+                        if (isNotEmpty()) append(" | ")
+                        append("ض: ${t.taxNumber}")
+                    }
+                    if (isEmpty()) append("غير محدد")
                 }
-                tvIdNumber.text     = t.idNumber.ifBlank { "غير محدد" }
+                tvIdNumber.text     = t.motherName.ifBlank { t.idNumber.ifBlank { "غير محدد" } }
                 tvPhone.text        = t.phone.ifBlank { "غير محدد" }
                 tvAddress.text      = t.address.ifBlank { "غير محدد" }
                 tvActivityType.text = t.activityType.ifBlank { "غير محدد" }
-                tvNotes.text        = t.notes.ifBlank { "لا توجد ملاحظات" }
+                tvNotes.text        = buildString {
+                    if (t.notes.isNotBlank()) append(t.notes)
+                    if (t.decisionDate.isNotBlank()) {
+                        if (isNotEmpty()) append("\n")
+                        append("تاريخ القرار: ${t.decisionDate}")
+                    }
+                    if (t.taxAmount > 0) {
+                        if (isNotEmpty()) append("\n")
+                        append("مقدار الضريبة: ${t.taxAmount} ل.س")
+                    }
+                    if (t.netProfit > 0) {
+                        if (isNotEmpty()) append("\n")
+                        append("الربح الصافي: ${t.netProfit} ل.س")
+                    }
+                    if (t.workNumber.isNotBlank()) {
+                        if (isNotEmpty()) append("\n")
+                        append("رقم العمل: ${t.workNumber}")
+                    }
+                    if (isEmpty()) append("لا توجد ملاحظات")
+                }
                 tvStatus.text       = t.status
                 tvNeighborRight.text = t.neighborRight.ifBlank { "غير محدد" }
                 tvNeighborLeft.text  = t.neighborLeft.ifBlank { "غير محدد" }
