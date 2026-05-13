@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">مكلفي الضرائب GPS</string>
+
+    <!-- الشاشة الرئيسية -->
+    <string name="search_hint">بحث بالاسم، الرقم الضريبي، الهاتف...</string>
+    <string name="filter_all">الكل</string>
+    <string name="filter_old">قدامى</string>
+    <string name="filter_new">جدد</string>
+    <string name="no_taxpayers">لا يوجد مكلفون</string>
+    <string name="add_taxpayer">إضافة مكلف</string>
+    <string name="edit_taxpayer">تعديل المكلف</string>
+
+    <!-- حقول المكلف -->
+    <string name="taxpayer_name">اسم المكلف</string>
+    <string name="tax_number">الرقم الضريبي</string>
+    <string name="id_number">رقم الهوية</string>
+    <string name="phone">الهاتف</string>
+    <string name="address">العنوان</string>
+    <string name="activity_type">نوع النشاط / المهنة</string>
+    <string name="notes">ملاحظات</string>
+    <string name="type_label">النوع</string>
+    <string name="type_old">قديم</string>
+    <string name="type_new">جديد</string>
+    <string name="status_label">الحالة</string>
+    <string name="neighbor_right">الجار الأيمن</string>
+    <string name="neighbor_left">الجار الأيسر</string>
+    <string name="shop_description">وصف المحل</string>
+
+    <!-- التفاصيل -->
+    <string name="taxpayer_details">تفاصيل المكلف</string>
+    <string name="not_specified">غير محدد</string>
+    <string name="no_notes">لا توجد ملاحظات</string>
+
+    <!-- الموقع GPS -->
+    <string name="capture_location">التقاط الموقع GPS</string>
+    <string name="recapture_location">إعادة التقاط الموقع</string>
+    <string name="stop_and_save">إيقاف وحفظ القراءة الحالية</string>
+    <string name="location_captured">✓ تم تحديد الموقع</string>
+    <string name="no_location">لا يوجد موقع محدد</string>
+    <string name="location_permission_denied">تم رفض صلاحية الموقع. يُرجى تفعيلها من الإعدادات.</string>
+    <string name="gps_disabled_title">خدمة الموقع معطّلة</string>
+    <string name="gps_disabled_message">يرجى تفعيل خدمة تحديد الموقع (GPS) للحصول على إحداثيات دقيقة.</string>
+    <string name="enable_gps">تفعيل</string>
+
+    <!-- الخريطة -->
+    <string name="map_view">عرض الخريطة</string>
+    <string name="open_in_google_maps">فتح في خرائط Google</string>
+    <string name="no_location_for_map">لا يوجد موقع محدد لهذا المكلف</string>
+    <string name="no_taxpayers_with_location">لا يوجد مكلفون لديهم موقع محدد</string>
+
+    <!-- أزرار -->
+    <string name="save">حفظ</string>
+    <string name="cancel">إلغاء</string>
+    <string name="delete">حذف</string>
+    <string name="edit">تعديل</string>
+    <string name="confirm_delete_title">تأكيد الحذف</string>
+    <string name="confirm_delete_message">هل أنت متأكد من حذف المكلف \"%s\"؟\nلا يمكن التراجع عن هذا الإجراء.</string>
+
+    <!-- الاستيراد -->
+    <string name="import_csv">استيراد CSV</string>
+    <string name="import_success">تم الاستيراد بنجاح</string>
+    <string name="import_error">خطأ أثناء الاستيراد</string>
+
+    <!-- عامة -->
+    <string name="required_field">هذا الحقل مطلوب</string>
+    <string name="saved_successfully">تم حفظ البيانات بنجاح</string>
+    <string name="deleted_successfully">تم حذف المكلف بنجاح</string>
+    <string name="error_occurred">حدث خطأ. حاول مرة أخرى.</string>
+    <string name="show_all_on_map">عرض الكل على الخريطة</string>
+</resources>
