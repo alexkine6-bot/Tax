@@ -10,8 +10,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.taxgps.app.R
 import com.taxgps.app.data.DatabaseHelper
+import com.taxgps.app.data.Landmark
 import com.taxgps.app.data.Taxpayer
 import com.taxgps.app.databinding.ActivityDetailBinding
+import com.taxgps.app.utils.DistanceHelper
 import com.taxgps.app.utils.LocationHelper
 import kotlinx.coroutines.launch
 

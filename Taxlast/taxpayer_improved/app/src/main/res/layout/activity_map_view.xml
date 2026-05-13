@@ -15,12 +15,12 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/primary"
-        app:title="@string/map_view"
+        app:title="@string/map_view_title"
         app:titleTextColor="@color/textOnPrimary"
         app:navigationIcon="?attr/homeAsUpIndicator"
         app:navigationIconTint="@color/textOnPrimary" />
 
-    <!-- معلومات المكلف فوق الخريطة -->
+    <!-- معلومات عامة فوق الخريطة -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -36,7 +36,7 @@
             android:textSize="@dimen/text_size_subtitle"
             android:textStyle="bold"
             android:textColor="@color/textPrimary"
-            tools:text="محمد أحمد الحسن" />
+            tools:text="الخريطة: 45 محل + 8 معالم" />
 
         <TextView
             android:id="@+id/tvMapCoordinates"
@@ -44,9 +44,92 @@
             android:layout_height="wrap_content"
             android:textSize="@dimen/text_size_small"
             android:textColor="@color/textSecondary"
-            tools:text="33.51234567, 36.29876543" />
+            tools:text="انقر على علامة لعرض التفاصيل" />
 
     </LinearLayout>
+
+    <!-- شريط أدوات الخريطة -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/sectionBackground"
+        android:scrollbars="none"
+        android:padding="4dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleConnections"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="@string/hide_connections"
+                android:textSize="11sp"
+                android:layout_marginEnd="4dp"
+                app:cornerRadius="16dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleLandmarks"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="@string/hide_landmarks"
+                android:textSize="11sp"
+                android:layout_marginEnd="4dp"
+                app:cornerRadius="16dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleDistances"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="@string/toggle_distances"
+                android:textSize="11sp"
+                android:layout_marginEnd="4dp"
+                app:cornerRadius="16dp" />
+
+            <!-- فلتر مسافة الربط -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/max_connection_distance"
+                android:textSize="11sp"
+                android:textColor="@color/textSecondary"
+                android:layout_marginEnd="4dp" />
+
+            <Spinner
+                android:id="@+id/spinnerDistance"
+                android:layout_width="80dp"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_search"
+                android:layout_marginEnd="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAddLandmark"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="@string/add_landmark"
+                android:textSize="11sp"
+                app:icon="@drawable/ic_add"
+                app:iconSize="14dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnManageLandmarks"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="@string/manage_landmarks"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
 
     <!-- الخريطة -->
     <FrameLayout
@@ -67,7 +150,164 @@
             android:layout_gravity="center"
             android:visibility="gone" />
 
+        <!-- دليل الألوان (Legend) -->
+        <LinearLayout
+            android:id="@+id/legendPanel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="@dimen/map_legend_padding"
+            android:orientation="vertical"
+            android:background="@drawable/bg_stats_card"
+            android:padding="8dp"
+            android:elevation="4dp"
+            android:alpha="0.92">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/legend_title"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/textPrimary"
+                android:layout_marginBottom="4dp" />
+
+            <!-- ألوان خطوط المسافة -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="2dp">
+
+                <View
+                    android:layout_width="20dp"
+                    android:layout_height="3dp"
+                    android:background="#4CAF50" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" &lt; 30م"
+                    android:textSize="9sp"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="2dp">
+
+                <View
+                    android:layout_width="20dp"
+                    android:layout_height="3dp"
+                    android:background="#2196F3" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" 30-80م"
+                    android:textSize="9sp"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="2dp">
+
+                <View
+                    android:layout_width="20dp"
+                    android:layout_height="3dp"
+                    android:background="#FF9800" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" 80-150م"
+                    android:textSize="9sp"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <View
+                    android:layout_width="20dp"
+                    android:layout_height="3dp"
+                    android:background="#9E9E9E" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" > 150م"
+                    android:textSize="9sp"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
+        </LinearLayout>
+
     </FrameLayout>
+
+    <!-- لوحة معلومات المكلف / المعلم (تظهر عند النقر) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/infoPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_medium"
+        app:cardCornerRadius="@dimen/card_corner_radius"
+        app:cardElevation="6dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/padding_medium">
+
+            <TextView
+                android:id="@+id/tvInfoName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_subtitle"
+                android:textStyle="bold"
+                android:textColor="@color/textPrimary"
+                android:layout_marginBottom="4dp"
+                tools:text="محمد أحمد" />
+
+            <TextView
+                android:id="@+id/tvInfoDetails"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_small"
+                android:textColor="@color/textSecondary"
+                android:layout_marginBottom="4dp"
+                tools:text="بقالية - القطيلبية" />
+
+            <TextView
+                android:id="@+id/tvInfoNearestLandmark"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_small"
+                android:textColor="@color/info"
+                android:layout_marginBottom="4dp"
+                tools:text="أقرب معلم: 🕌 مسجد النور (45 م)" />
+
+            <TextView
+                android:id="@+id/tvInfoNeighbors"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_small"
+                android:textColor="@color/textSecondary"
+                android:lineSpacingMultiplier="1.4"
+                tools:text="الجيران:\n  • خالد العلي → 12 م\n  • أحمد محمد → 28 م" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- زر فتح Google Maps -->
     <com.google.android.material.button.MaterialButton
@@ -75,7 +315,8 @@
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="@dimen/margin_medium"
+        android:layout_marginHorizontal="@dimen/margin_medium"
+        android:layout_marginBottom="@dimen/margin_medium"
         android:text="@string/open_in_google_maps"
         app:icon="@drawable/ic_location"
         app:iconGravity="textStart" />

@@ -70,6 +70,8 @@ class MainActivity : AppCompatActivity() {
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         menu.add(0, MENU_MAP_ALL, 2, getString(R.string.show_all_on_map))
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.add(0, MENU_LANDMARKS, 3, getString(R.string.manage_landmarks))
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         return true
     }
 
@@ -88,6 +90,10 @@ class MainActivity : AppCompatActivity() {
                     it.putExtra(MapViewActivity.EXTRA_SHOW_ALL, true)
                     startActivity(it)
                 }
+                true
+            }
+            MENU_LANDMARKS -> {
+                startActivity(Intent(this, LandmarkListActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -264,5 +270,6 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_IMPORT = 100
         private const val MENU_IMPORT_CSV = 101
         private const val MENU_MAP_ALL = 102
+        private const val MENU_LANDMARKS = 103
     }
 }
