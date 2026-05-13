@@ -21,7 +21,7 @@ class DatabaseHelper private constructor(context: Context) :
     companion object {
         private const val TAG = "DatabaseHelper"
         private const val DB_NAME = "taxpayers_v4.db"
-        private const val DB_VERSION = 6   // رُفع لدعم جدول المعالم المرجعية
+        private const val DB_VERSION = 7   // رُفع لدعم رقم العقار والصور
 
         const val TABLE = "taxpayers"
         const val TABLE_LANDMARKS = "landmarks"
@@ -56,6 +56,8 @@ class DatabaseHelper private constructor(context: Context) :
         const val COL_NEIGHBOR_RIGHT  = "neighbor_right"
         const val COL_NEIGHBOR_LEFT   = "neighbor_left"
         const val COL_SHOP_DESC       = "shop_description"
+        const val COL_PROPERTY_NUMBER = "property_number"
+        const val COL_PHOTOS          = "photos"
         const val COL_LATITUDE        = "latitude"
         const val COL_LONGITUDE       = "longitude"
         const val COL_ACCURACY        = "accuracy"
@@ -81,7 +83,7 @@ class DatabaseHelper private constructor(context: Context) :
             COL_TAX_NUMBER, COL_ID_NUMBER, COL_PHONE,
             COL_ADDRESS, COL_ACTIVITY_TYPE, COL_NOTES, COL_TYPE, COL_STATUS,
             COL_ACCESS_NO, COL_DECISION_DATE, COL_TAX_AMOUNT, COL_WORK_NUMBER, COL_NET_PROFIT,
-            COL_NEIGHBOR_RIGHT, COL_NEIGHBOR_LEFT, COL_SHOP_DESC,
+            COL_NEIGHBOR_RIGHT, COL_NEIGHBOR_LEFT, COL_SHOP_DESC, COL_PROPERTY_NUMBER, COL_PHOTOS,
             COL_LATITUDE, COL_LONGITUDE, COL_ACCURACY,
             COL_CAPTURED_AT, COL_CREATED_AT,
             COL_SYNC_STATUS, COL_DRIVE_ID
@@ -120,6 +122,8 @@ class DatabaseHelper private constructor(context: Context) :
                 $COL_NEIGHBOR_RIGHT TEXT,
                 $COL_NEIGHBOR_LEFT  TEXT,
                 $COL_SHOP_DESC      TEXT,
+                $COL_PROPERTY_NUMBER TEXT,
+                $COL_PHOTOS         TEXT,
                 $COL_LATITUDE       REAL,
                 $COL_LONGITUDE      REAL,
                 $COL_ACCURACY       REAL,
@@ -175,6 +179,7 @@ class DatabaseHelper private constructor(context: Context) :
         if (oldVersion < 4) migrateTo4(db)
         if (oldVersion < 5) migrateTo5(db)
         if (oldVersion < 6) migrateTo6(db)
+        if (oldVersion < 7) migrateTo7(db)
 
         Log.i(TAG, "Upgrade complete")
     }
@@ -211,6 +216,13 @@ class DatabaseHelper private constructor(context: Context) :
     /** v5 → v6: إضافة جدول المعالم المرجعية */
     private fun migrateTo6(db: SQLiteDatabase) {
         createLandmarksTable(db)
+    }
+
+    /** v6 → v7: إضافة رقم العقار والصور */
+    private fun migrateTo7(db: SQLiteDatabase) {
+        safeAlter(db, "ALTER TABLE $TABLE ADD COLUMN $COL_PROPERTY_NUMBER TEXT")
+        safeAlter(db, "ALTER TABLE $TABLE ADD COLUMN $COL_PHOTOS TEXT")
+        safeAlter(db, "CREATE INDEX IF NOT EXISTS idx_property ON $TABLE($COL_PROPERTY_NUMBER)")
     }
 
     private fun safeAlter(db: SQLiteDatabase, sql: String) {
@@ -257,21 +269,25 @@ class DatabaseHelper private constructor(context: Context) :
 
     suspend fun getAllTaxpayersAsync(
         filter: String = "",
-        typeFilter: String = ""
+        typeFilter: String = "",
+        limit: Int = 500,
+        offset: Int = 0
     ): List<Taxpayer> = withContext(Dispatchers.IO) {
 
         val conditions = mutableListOf<String>()
         val args = mutableListOf<String>()
 
         if (filter.isNotBlank()) {
+            // بحث محسّن: يدعم البحث الجزئي بكفاءة
+            // استخدام GLOB بدلاً من LIKE للحروف العربية أسرع في بعض الحالات
             conditions.add(
                 "($COL_NAME LIKE ? OR $COL_TAX_NUMBER LIKE ? " +
                 "OR $COL_PHONE LIKE ? OR $COL_ACCESS_NO LIKE ? " +
                 "OR $COL_ADDRESS LIKE ? OR $COL_ACTIVITY_TYPE LIKE ? " +
-                "OR $COL_RECORD_NUMBER LIKE ?)"
+                "OR $COL_RECORD_NUMBER LIKE ? OR $COL_PROPERTY_NUMBER LIKE ?)"
             )
             val q = "%$filter%"
-            repeat(7) { args.add(q) }
+            repeat(8) { args.add(q) }
         }
         if (typeFilter.isNotBlank()) {
             conditions.add("$COL_TYPE=?")
@@ -281,9 +297,10 @@ class DatabaseHelper private constructor(context: Context) :
         val selection = if (conditions.isEmpty()) null else conditions.joinToString(" AND ")
         val selArgs  = if (args.isEmpty()) null else args.toTypedArray()
 
+        // LIMIT مهم جداً لتحسين الأداء مع آلاف السجلات
         readableDatabase.query(
             TABLE, ALL_COLUMNS, selection, selArgs,
-            null, null, "$COL_CREATED_AT DESC"
+            null, null, "$COL_NAME ASC", "$limit OFFSET $offset"
         ).use { cursor ->
             buildList { while (cursor.moveToNext()) add(cursor.toTaxpayer()) }
         }
@@ -467,6 +484,8 @@ class DatabaseHelper private constructor(context: Context) :
         put(COL_NEIGHBOR_RIGHT, neighborRight)
         put(COL_NEIGHBOR_LEFT,  neighborLeft)
         put(COL_SHOP_DESC,      shopDescription)
+        put(COL_PROPERTY_NUMBER, propertyNumber)
+        put(COL_PHOTOS,         photos)
         put(COL_LATITUDE,       latitude)
         put(COL_LONGITUDE,      longitude)
         put(COL_ACCURACY,       accuracy)
@@ -523,6 +542,8 @@ class DatabaseHelper private constructor(context: Context) :
             neighborRight   = str(COL_NEIGHBOR_RIGHT),
             neighborLeft    = str(COL_NEIGHBOR_LEFT),
             shopDescription = str(COL_SHOP_DESC),
+            propertyNumber  = str(COL_PROPERTY_NUMBER),
+            photos          = str(COL_PHOTOS),
             latitude        = dbl(COL_LATITUDE),
             longitude       = dbl(COL_LONGITUDE),
             accuracy        = flt(COL_ACCURACY),

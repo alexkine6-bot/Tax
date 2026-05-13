@@ -18,6 +18,7 @@ import com.taxgps.app.data.DatabaseHelper
 import com.taxgps.app.data.Taxpayer
 import com.taxgps.app.databinding.ActivityMainBinding
 import com.taxgps.app.utils.AccessDbImportHelper
+import com.taxgps.app.utils.BackupHelper
 import com.taxgps.app.viewmodel.TaxpayerViewModel
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -43,6 +44,20 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let { startImport(it) }
+    }
+
+    // ── ملتقط النسخ الاحتياطية ───────────────────────────────────────────────
+    private val backupPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { importBackup(it) }
+    }
+
+    // ── إنشاء ملف النسخة الاحتياطية ─────────────────────────────────────────
+    private val backupCreateLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri: Uri? ->
+        uri?.let { performExportBackup(it) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,6 +87,10 @@ class MainActivity : AppCompatActivity() {
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         menu.add(0, MENU_LANDMARKS, 3, getString(R.string.manage_landmarks))
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.add(0, MENU_BACKUP_EXPORT, 4, getString(R.string.export_backup))
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.add(0, MENU_BACKUP_IMPORT, 5, getString(R.string.import_backup))
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         return true
     }
 
@@ -94,6 +113,14 @@ class MainActivity : AppCompatActivity() {
             }
             MENU_LANDMARKS -> {
                 startActivity(Intent(this, LandmarkListActivity::class.java))
+                true
+            }
+            MENU_BACKUP_EXPORT -> {
+                exportBackup()
+                true
+            }
+            MENU_BACKUP_IMPORT -> {
+                backupPickerLauncher.launch(arrayOf("*/*"))
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -271,5 +298,81 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_IMPORT_CSV = 101
         private const val MENU_MAP_ALL = 102
         private const val MENU_LANDMARKS = 103
+        private const val MENU_BACKUP_EXPORT = 104
+        private const val MENU_BACKUP_IMPORT = 105
+    }
+
+    // ── النسخ الاحتياطي ──────────────────────────────────────────────────────
+
+    private fun exportBackup() {
+        val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        backupCreateLauncher.launch("tax_backup_${timestamp}.taxbackup")
+    }
+
+    private fun performExportBackup(uri: Uri) {
+        val backupHelper = BackupHelper(this, DatabaseHelper.getInstance(this))
+        binding.progressBar.visibility = View.VISIBLE
+
+        lifecycleScope.launch {
+            backupHelper.exportBackup(uri, object : BackupHelper.BackupListener {
+                override fun onProgress(message: String, percent: Int) {
+                    binding.progressBar.visibility = View.VISIBLE
+                }
+                override fun onSuccess(message: String) {
+                    binding.progressBar.visibility = View.GONE
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle(getString(R.string.backup_success))
+                        .setMessage(message)
+                        .setPositiveButton("حسناً", null)
+                        .show()
+                }
+                override fun onError(error: String) {
+                    binding.progressBar.visibility = View.GONE
+                    Toast.makeText(this@MainActivity, error, Toast.LENGTH_LONG).show()
+                }
+            })
+        }
+    }
+
+    private fun importBackup(uri: Uri) {
+        val backupHelper = BackupHelper(this, DatabaseHelper.getInstance(this))
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.backup_title))
+            .setMessage(getString(R.string.backup_replace_warning))
+            .setPositiveButton("استبدال الكل") { _, _ ->
+                performImportBackup(backupHelper, uri, true)
+            }
+            .setNeutralButton("إضافة فقط") { _, _ ->
+                performImportBackup(backupHelper, uri, false)
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
+    private fun performImportBackup(helper: BackupHelper, uri: Uri, replace: Boolean) {
+        binding.progressBar.visibility = View.VISIBLE
+
+        lifecycleScope.launch {
+            helper.importBackup(uri, replace, object : BackupHelper.BackupListener {
+                override fun onProgress(message: String, percent: Int) {
+                    binding.progressBar.visibility = View.VISIBLE
+                }
+                override fun onSuccess(message: String) {
+                    binding.progressBar.visibility = View.GONE
+                    viewModel.refresh()
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle(getString(R.string.restore_success))
+                        .setMessage(message)
+                        .setPositiveButton("حسناً", null)
+                        .show()
+                }
+                override fun onError(error: String) {
+                    binding.progressBar.visibility = View.GONE
+                    Toast.makeText(this@MainActivity, error, Toast.LENGTH_LONG).show()
+                }
+            })
+        }
     }
 }

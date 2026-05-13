@@ -3,7 +3,9 @@ package com.taxgps.app.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.location.Location
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
@@ -11,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.taxgps.app.R
 import com.taxgps.app.data.DatabaseHelper
@@ -18,6 +21,9 @@ import com.taxgps.app.data.Taxpayer
 import com.taxgps.app.databinding.ActivityAddEditBinding
 import com.taxgps.app.utils.LocationHelper
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * شاشة إضافة / تعديل المكلف المحسّنة
@@ -41,6 +47,7 @@ class AddEditActivity : AppCompatActivity() {
     private var capturedAcc: Float?   = null
     private var capturedAt:  Long?    = null
     private var isCapturing = false
+    private var photosList = mutableListOf<String>()  // مسارات الصور
 
     // ── صلاحية الموقع ────────────────────────────────────────────────────────
 
@@ -52,6 +59,26 @@ class AddEditActivity : AppCompatActivity() {
         } else {
             Toast.makeText(this, getString(R.string.location_permission_denied), Toast.LENGTH_LONG).show()
         }
+    }
+
+    // ── التقاط صورة من الكاميرا ──────────────────────────────────────────────
+    private var currentPhotoPath: String = ""
+
+    private val takePhotoLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && currentPhotoPath.isNotBlank()) {
+            photosList.add(currentPhotoPath)
+            updatePhotoCount()
+            Toast.makeText(this, getString(R.string.photo_saved), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // ── اختيار صورة من المعرض ────────────────────────────────────────────────
+    private val pickPhotoLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { savePickedPhoto(it) }
     }
 
     // ── دورة الحياة ───────────────────────────────────────────────────────────
@@ -82,6 +109,10 @@ class AddEditActivity : AppCompatActivity() {
         }
 
         binding.btnSave.setOnClickListener { attemptSave() }
+
+        // أزرار الصور
+        binding.btnTakePhoto.setOnClickListener { takePhoto() }
+        binding.btnPickPhoto.setOnClickListener { pickPhotoLauncher.launch("image/*") }
     }
 
     override fun onDestroy() {
@@ -112,6 +143,7 @@ class AddEditActivity : AppCompatActivity() {
                 etAddress.setText(t.address)
                 etActivityType.setText(t.activityType)
                 etNotes.setText(t.notes)
+                etPropertyNumber.setText(t.propertyNumber)
                 etNeighborRight.setText(t.neighborRight)
                 etNeighborLeft.setText(t.neighborLeft)
                 etShopDesc.setText(t.shopDescription)
@@ -120,6 +152,12 @@ class AddEditActivity : AppCompatActivity() {
 
                 val statusIdx = Taxpayer.STATUS_LIST.indexOf(t.status)
                 if (statusIdx >= 0) spinnerStatus.setSelection(statusIdx)
+
+                // تحميل الصور
+                if (t.photos.isNotBlank()) {
+                    photosList = t.photos.split("|").filter { it.isNotBlank() }.toMutableList()
+                    updatePhotoCount()
+                }
 
                 if (t.hasLocation()) {
                     capturedLat = t.latitude
@@ -295,9 +333,11 @@ class AddEditActivity : AppCompatActivity() {
             notes           = binding.etNotes.text.toString().trim(),
             type            = if (binding.rbOld.isChecked) Taxpayer.TYPE_OLD else Taxpayer.TYPE_NEW,
             status          = Taxpayer.STATUS_LIST[binding.spinnerStatus.selectedItemPosition],
+            propertyNumber  = binding.etPropertyNumber.text.toString().trim(),
             neighborRight   = binding.etNeighborRight.text.toString().trim(),
             neighborLeft    = binding.etNeighborLeft.text.toString().trim(),
             shopDescription = binding.etShopDesc.text.toString().trim(),
+            photos          = photosList.joinToString("|"),
             latitude        = capturedLat,
             longitude       = capturedLon,
             accuracy        = capturedAcc,
@@ -309,6 +349,51 @@ class AddEditActivity : AppCompatActivity() {
             else db.insertTaxpayerAsync(taxpayer)
             Toast.makeText(this@AddEditActivity, "تم حفظ البيانات بنجاح", Toast.LENGTH_SHORT).show()
             finish()
+        }
+    }
+
+    // ── الصور ───────────────────────────────────────────────────────────────
+
+    private fun takePhoto() {
+        val photosDir = File(filesDir, "taxpayer_photos")
+        if (!photosDir.exists()) photosDir.mkdirs()
+
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val photoFile = File(photosDir, "IMG_${timeStamp}.jpg")
+        currentPhotoPath = photoFile.absolutePath
+
+        val photoUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", photoFile)
+        takePhotoLauncher.launch(photoUri)
+    }
+
+    private fun savePickedPhoto(uri: Uri) {
+        try {
+            val photosDir = File(filesDir, "taxpayer_photos")
+            if (!photosDir.exists()) photosDir.mkdirs()
+
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val destFile = File(photosDir, "PICK_${timeStamp}.jpg")
+
+            contentResolver.openInputStream(uri)?.use { input ->
+                destFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            photosList.add(destFile.absolutePath)
+            updatePhotoCount()
+            Toast.makeText(this, getString(R.string.photo_saved), Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.photo_error), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updatePhotoCount() {
+        val count = photosList.size
+        binding.tvPhotoCount.text = if (count > 0) {
+            getString(R.string.photos_count, count)
+        } else {
+            getString(R.string.no_photos)
         }
     }
 
