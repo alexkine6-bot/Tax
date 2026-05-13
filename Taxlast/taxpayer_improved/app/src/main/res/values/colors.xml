@@ -1,41 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ألوان أساسية -->
+    <!-- ألوان أساسية - تباين أعلى -->
     <color name="primary">#1565C0</color>
     <color name="primaryDark">#0D47A1</color>
     <color name="primaryLight">#42A5F5</color>
     <color name="accent">#FF6F00</color>
+    <color name="primarySurface">#E3F2FD</color>
 
-    <!-- ألوان النصوص -->
-    <color name="textPrimary">#212121</color>
-    <color name="textSecondary">#757575</color>
+    <!-- ألوان النصوص - تباين محسّن -->
+    <color name="textPrimary">#1A1A1A</color>
+    <color name="textSecondary">#5C5C5C</color>
     <color name="textOnPrimary">#FFFFFF</color>
+    <color name="textHint">#9E9E9E</color>
 
     <!-- ألوان الخلفية -->
-    <color name="background">#F5F5F5</color>
+    <color name="background">#F8F9FA</color>
     <color name="surface">#FFFFFF</color>
     <color name="cardBackground">#FFFFFF</color>
+    <color name="sectionBackground">#F0F4F8</color>
 
-    <!-- ألوان النوع (قديم / جديد) -->
-    <color name="oldType">#E65100</color>
-    <color name="oldTypeBackground">#FFF3E0</color>
-    <color name="newType">#1B5E20</color>
+    <!-- ألوان النوع (قديم / جديد) - أوضح -->
+    <color name="oldType">#D84315</color>
+    <color name="oldTypeBackground">#FBE9E7</color>
+    <color name="newType">#2E7D32</color>
     <color name="newTypeBackground">#E8F5E9</color>
 
     <!-- ألوان الحالة -->
     <color name="success">#2E7D32</color>
-    <color name="warning">#F57C00</color>
+    <color name="warning">#EF6C00</color>
     <color name="error">#C62828</color>
     <color name="info">#1565C0</color>
 
     <!-- ألوان دقة GPS -->
     <color name="accuracyExcellent">#2E7D32</color>
     <color name="accuracyGood">#1565C0</color>
-    <color name="accuracyMedium">#F57C00</color>
+    <color name="accuracyMedium">#EF6C00</color>
     <color name="accuracyPoor">#C62828</color>
+
+    <!-- ألوان الخريطة -->
+    <color name="mapTaxpayerMarker">#1565C0</color>
+    <color name="mapLandmarkMarker">#FF6F00</color>
+    <color name="mapDistanceLine">#4CAF50</color>
+    <color name="mapConnectionLine">#90A4AE</color>
+    <color name="mapLegendBackground">#F5F5F5</color>
+    <color name="mapInfoBackground">#FFFFFF</color>
+    <color name="mapRadiusCircle">#201565C0</color>
+
+    <!-- ألوان المعالم المرجعية -->
+    <color name="landmarkMosque">#4CAF50</color>
+    <color name="landmarkSchool">#2196F3</color>
+    <color name="landmarkIntersection">#FF9800</color>
+    <color name="landmarkGovernment">#9C27B0</color>
+    <color name="landmarkMarket">#F44336</color>
+    <color name="landmarkOther">#607D8B</color>
 
     <!-- ألوان متنوعة -->
     <color name="divider">#E0E0E0</color>
     <color name="ripple">#1F000000</color>
     <color name="statusBarColor">#0D47A1</color>
+    <color name="statsBackground">#EDF4FC</color>
 </resources>

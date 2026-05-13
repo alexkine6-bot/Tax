@@ -57,11 +57,24 @@
             android:exported="false"
             android:label="@string/taxpayer_details" />
 
-        <!-- عرض الخريطة -->
+        <!-- عرض الخريطة المتكاملة -->
         <activity
             android:name=".ui.MapViewActivity"
             android:exported="false"
-            android:label="@string/map_view" />
+            android:label="@string/map_view_title" />
+
+        <!-- إضافة / تعديل معلم مرجعي -->
+        <activity
+            android:name=".ui.LandmarkActivity"
+            android:exported="false"
+            android:label="@string/add_landmark"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- إدارة المعالم المرجعية -->
+        <activity
+            android:name=".ui.LandmarkListActivity"
+            android:exported="false"
+            android:label="@string/manage_landmarks" />
 
     </application>
 

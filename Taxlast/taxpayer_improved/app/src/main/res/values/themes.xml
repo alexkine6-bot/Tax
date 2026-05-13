@@ -1,45 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
+    <!-- ثيم التطبيق الرئيسي - محسّن للقراءة -->
     <style name="Theme.TaxGPS" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- ألوان أساسية -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primaryDark</item>
         <item name="colorAccent">@color/accent</item>
         <item name="colorOnPrimary">@color/textOnPrimary</item>
-        <item name="android:statusBarColor">@color/statusBarColor</item>
+
+        <!-- ألوان الخلفية -->
         <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="android:navigationBarColor">@color/primaryDark</item>
+
+        <!-- دعم RTL -->
+        <item name="android:supportsRtl">true</item>
+        <item name="android:layoutDirection">rtl</item>
+        <item name="android:textDirection">rtl</item>
+
+        <!-- نصوص أساسية -->
         <item name="android:textColorPrimary">@color/textPrimary</item>
         <item name="android:textColorSecondary">@color/textSecondary</item>
+        <item name="android:textColorHint">@color/textHint</item>
+
+        <!-- تحسين الخطوط -->
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:lineSpacingMultiplier">1.2</item>
     </style>
 
-    <!-- ستايل الـ Toolbar -->
-    <style name="Theme.TaxGPS.Toolbar" parent="Widget.MaterialComponents.Toolbar.Primary">
-        <item name="android:background">@color/primary</item>
-        <item name="titleTextColor">@color/textOnPrimary</item>
-    </style>
-
-    <!-- ستايل الحقول -->
-    <style name="Theme.TaxGPS.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-        <item name="boxStrokeColor">@color/primary</item>
-        <item name="hintTextColor">@color/primary</item>
-    </style>
-
-    <!-- ستايل الأزرار -->
-    <style name="Theme.TaxGPS.Button" parent="Widget.MaterialComponents.Button">
-        <item name="backgroundTint">@color/primary</item>
-        <item name="android:textColor">@color/textOnPrimary</item>
-    </style>
-
-    <style name="Theme.TaxGPS.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
-        <item name="strokeColor">@color/primary</item>
-        <item name="android:textColor">@color/primary</item>
-    </style>
-
-    <!-- ستايل البطاقات -->
-    <style name="Theme.TaxGPS.Card" parent="Widget.MaterialComponents.CardView">
-        <item name="cardElevation">2dp</item>
-        <item name="cardCornerRadius">8dp</item>
+    <!-- ثيم بطاقة المعلومات -->
+    <style name="InfoCardStyle">
+        <item name="cardCornerRadius">@dimen/card_corner_radius</item>
+        <item name="cardElevation">@dimen/card_elevation</item>
         <item name="cardBackgroundColor">@color/cardBackground</item>
     </style>
 
+    <!-- نمط عنوان القسم -->
+    <style name="SectionTitle">
+        <item name="android:textSize">@dimen/text_size_subtitle</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:layout_marginBottom">@dimen/margin_medium</item>
+        <item name="android:layout_marginTop">@dimen/section_spacing</item>
+    </style>
+
+    <!-- نمط التسمية -->
+    <style name="FieldLabel">
+        <item name="android:textSize">@dimen/text_size_small</item>
+        <item name="android:textColor">@color/textSecondary</item>
+        <item name="android:layout_marginBottom">2dp</item>
+    </style>
+
+    <!-- نمط القيمة -->
+    <style name="FieldValue">
+        <item name="android:textSize">@dimen/text_size_body</item>
+        <item name="android:textColor">@color/textPrimary</item>
+        <item name="android:layout_marginBottom">@dimen/margin_medium</item>
+        <item name="android:lineSpacingMultiplier">1.3</item>
+    </style>
 </resources>
