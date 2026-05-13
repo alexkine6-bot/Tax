@@ -42,16 +42,29 @@ class TaxpayerAdapter(
             tvName.text = item.name
 
             tvTaxNumber.text = buildString {
-                if (item.taxNumber.isNotBlank()) append("رقم ضريبي: ${item.taxNumber}")
+                if (item.recordNumber > 0) append("سجل: ${item.recordNumber}")
                 if (item.accessDecisionNo.isNotBlank()) {
                     if (isNotEmpty()) append(" | ")
                     append("قرار: ${item.accessDecisionNo}")
                 }
-                if (isEmpty()) append("الرقم الضريبي: غير محدد")
+                if (item.taxNumber.isNotBlank()) {
+                    if (isNotEmpty()) append(" | ")
+                    append("ض: ${item.taxNumber}")
+                }
+                if (isEmpty()) append("بدون رقم سجل")
             }
 
-            tvPhone.text = if (item.phone.isNotBlank())
-                "الهاتف: ${item.phone}" else "الهاتف: غير محدد"
+            tvPhone.text = buildString {
+                if (item.activityType.isNotBlank()) append(item.activityType)
+                if (item.address.isNotBlank()) {
+                    if (isNotEmpty()) append(" - ")
+                    append(item.address)
+                }
+                if (isEmpty()) {
+                    if (item.phone.isNotBlank()) append("الهاتف: ${item.phone}")
+                    else append("بدون تفاصيل")
+                }
+            }
 
             // شريحة النوع (قديم / جديد)
             if (item.isOld()) {

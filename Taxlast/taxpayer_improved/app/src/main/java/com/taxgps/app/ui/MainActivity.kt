@@ -1,17 +1,26 @@
 package com.taxgps.app.ui
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.taxgps.app.R
+import com.taxgps.app.data.DatabaseHelper
 import com.taxgps.app.data.Taxpayer
 import com.taxgps.app.databinding.ActivityMainBinding
+import com.taxgps.app.utils.AccessDbImportHelper
 import com.taxgps.app.viewmodel.TaxpayerViewModel
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 /**
  * الشاشة الرئيسية المحسّنة
@@ -29,10 +38,18 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: TaxpayerViewModel by viewModels()
     private lateinit var adapter: TaxpayerAdapter
 
+    // ── ملتقط الملفات ─────────────────────────────────────────────────────────
+    private val filePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { startImport(it) }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setSupportActionBar(binding.toolbar)
 
         setupRecyclerView()
         setupSearchView()
@@ -41,6 +58,39 @@ class MainActivity : AppCompatActivity() {
 
         binding.fab.setOnClickListener {
             startActivity(Intent(this, AddEditActivity::class.java))
+        }
+    }
+
+    // ── قائمة الخيارات (استيراد + عرض الكل على الخريطة) ──────────────────────
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menu.add(0, MENU_IMPORT, 0, "استيراد ملف Access")
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.add(0, MENU_IMPORT_CSV, 1, "استيراد CSV")
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.add(0, MENU_MAP_ALL, 2, getString(R.string.show_all_on_map))
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            MENU_IMPORT -> {
+                showImportDialog()
+                true
+            }
+            MENU_IMPORT_CSV -> {
+                filePickerLauncher.launch(arrayOf("text/csv", "text/comma-separated-values", "text/*"))
+                true
+            }
+            MENU_MAP_ALL -> {
+                Intent(this, MapViewActivity::class.java).also {
+                    it.putExtra(MapViewActivity.EXTRA_SHOW_ALL, true)
+                    startActivity(it)
+                }
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 
@@ -94,7 +144,7 @@ class MainActivity : AppCompatActivity() {
             binding.tvTotal.text    = "الإجمالي: ${stats.total}"
             binding.tvOldCount.text = "قدامى: ${stats.oldCount}"
             binding.tvNewCount.text = "جدد: ${stats.newCount}"
-            binding.tvWithGps.text  = "لديهم موقع: ${stats.withLocation}"
+            binding.tvWithGps.text  = "موقع: ${stats.withLocation}"
         }
 
         // مؤشر التحميل
@@ -118,7 +168,101 @@ class MainActivity : AppCompatActivity() {
         viewModel.refresh()
     }
 
+    // ── الاستيراد ─────────────────────────────────────────────────────────────
+
+    private fun showImportDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("استيراد ملف Access (.accdb)")
+            .setMessage(
+                "اختر ملف قاعدة بيانات Access (سجلات_الدخل_المقطوع.accdb)\n\n" +
+                "سيتم استيراد البيانات التالية:\n" +
+                "- السجل، اسم المكلف، اسم الأم\n" +
+                "- رقم القرار، تاريخ القرار\n" +
+                "- المهنة، العنوان\n" +
+                "- مقدار الضريبة، الربح الصافي\n\n" +
+                "هل تريد استبدال البيانات الحالية أم إضافة الجديدة فقط؟"
+            )
+            .setPositiveButton("استبدال الكل") { _, _ ->
+                launchFilePicker(clearExisting = true)
+            }
+            .setNeutralButton("إضافة فقط") { _, _ ->
+                launchFilePicker(clearExisting = false)
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
+    private fun launchFilePicker(clearExisting: Boolean) {
+        importClearExisting = clearExisting
+        filePickerLauncher.launch(arrayOf(
+            "application/msaccess",
+            "application/x-msaccess",
+            "application/vnd.ms-access",
+            "application/octet-stream",
+            "*/*"
+        ))
+    }
+
+    private var importClearExisting = false
+
+    private fun startImport(uri: Uri) {
+        val fileName = uri.lastPathSegment ?: "file"
+        val isAccess = fileName.endsWith(".accdb", true) || fileName.endsWith(".mdb", true)
+        val isCsv = fileName.endsWith(".csv", true)
+
+        val db = DatabaseHelper.getInstance(this)
+        val importHelper = AccessDbImportHelper(this, db)
+
+        // إظهار مؤشر التحميل
+        binding.progressBar.visibility = View.VISIBLE
+
+        val listener = object : AccessDbImportHelper.ImportListener {
+            override fun onProgress(current: Int, total: Int, message: String) {
+                binding.progressBar.visibility = View.VISIBLE
+            }
+
+            override fun onFinished(result: AccessDbImportHelper.ImportResult) {
+                binding.progressBar.visibility = View.GONE
+                viewModel.refresh()
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("تم الاستيراد بنجاح")
+                    .setMessage(
+                        "مُضاف: ${result.added}\n" +
+                        "مُحدَّث: ${result.updated}\n" +
+                        "مُتخطَّى: ${result.skipped}\n" +
+                        "أخطاء: ${result.errors}\n\n" +
+                        "الإجمالي: ${result.total}"
+                    )
+                    .setPositiveButton("حسناً", null)
+                    .show()
+            }
+
+            override fun onError(error: String) {
+                binding.progressBar.visibility = View.GONE
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("خطأ في الاستيراد")
+                    .setMessage(error)
+                    .setPositiveButton("حسناً", null)
+                    .show()
+            }
+        }
+
+        lifecycleScope.launch {
+            if (isAccess) {
+                importHelper.importFromUri(uri, listener, importClearExisting)
+            } else if (isCsv) {
+                importHelper.importFromCsv(uri, listener, importClearExisting)
+            } else {
+                // محاولة كـ Access أولاً ثم CSV
+                importHelper.importFromUri(uri, listener, importClearExisting)
+            }
+        }
+    }
+
     companion object {
         const val EXTRA_ID = "extra_taxpayer_id"
+        private const val MENU_IMPORT = 100
+        private const val MENU_IMPORT_CSV = 101
+        private const val MENU_MAP_ALL = 102
     }
 }
