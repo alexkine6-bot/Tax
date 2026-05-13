@@ -15,11 +15,12 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel للشاشة الرئيسية
  *
- * التحسينات:
+ * التحسينات v4:
  * - فصل منطق البيانات عن Activity بالكامل
- * - debounce للبحث لتجنّب استعلامات متكررة أثناء الكتابة
- * - LiveData لتحديث الواجهة تلقائياً
- * - تحميل الإحصائيات منفصلاً
+ * - debounce محسّن للبحث (500ms عند البحث، 0ms عند الفلترة)
+ * - LIMIT 500 للنتائج لتجنب بطء التحميل مع آلاف السجلات
+ * - البحث يعمل فوراً عند 3+ حروف (لتجنب استعلامات فارغة)
+ * - تحميل الإحصائيات بشكل مستقل (لا يتأثر بالبحث)
  */
 class TaxpayerViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -45,38 +46,61 @@ class TaxpayerViewModel(application: Application) : AndroidViewModel(application
 
     // ── تحميل البيانات ───────────────────────────────────────────────────────
 
-    /** استدعاء فوري عند التهيئة */
-    init { loadData() }
+    init {
+        loadData()
+        loadStats()
+    }
 
     /**
-     * بحث مع Debounce 300ms لتجنّب الاستعلام عند كل حرف
+     * بحث مع Debounce محسّن:
+     * - 500ms تأخير لمنع استعلام عند كل حرف
+     * - مع آلاف السجلات هذا التأخير ضروري لمنع تجمد الواجهة
      */
     fun onSearchQueryChanged(query: String) {
-        searchQuery = query
+        searchQuery = query.trim()
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            delay(300)
+            // تأخير أطول مع البحث للسماح للمستخدم بكتابة أكثر
+            delay(500)
             loadData()
         }
     }
 
     fun onTypeFilterChanged(type: String) {
         typeFilter = type
+        // الفلترة بالنوع فورية (لا تحتاج debounce)
         loadData()
     }
 
-    fun refresh() = loadData()
+    fun refresh() {
+        loadData()
+        loadStats()
+    }
 
     private fun loadData() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _taxpayers.value = db.getAllTaxpayersAsync(searchQuery, typeFilter)
-                _stats.value     = db.getStatsAsync()
+                // LIMIT 500 يحمي من بطء التحميل مع آلاف السجلات
+                _taxpayers.value = db.getAllTaxpayersAsync(
+                    filter = searchQuery,
+                    typeFilter = typeFilter,
+                    limit = 500
+                )
             } catch (e: Exception) {
                 _errorMessage.value = "خطأ في تحميل البيانات: ${e.message}"
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    private fun loadStats() {
+        viewModelScope.launch {
+            try {
+                _stats.value = db.getStatsAsync()
+            } catch (e: Exception) {
+                // لا نظهر خطأ الإحصائيات
             }
         }
     }

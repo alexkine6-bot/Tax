@@ -28,9 +28,11 @@ data class Taxpayer(
     val netProfit: Long = 0,                  // الربح الصافي (ل.س)
 
     // تعريف المحل
+    val propertyNumber: String = "",          // رقم العقار
     val neighborRight: String = "",
     val neighborLeft: String = "",
     val shopDescription: String = "",
+    val photos: String = "",                  // مسارات الصور (مفصولة بـ |)
 
     // بيانات GPS
     val latitude: Double? = null,

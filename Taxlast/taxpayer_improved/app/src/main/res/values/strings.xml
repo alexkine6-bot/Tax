@@ -23,9 +23,27 @@
     <string name="type_old">قديم</string>
     <string name="type_new">جديد</string>
     <string name="status_label">الحالة</string>
+    <string name="property_number">رقم العقار</string>
     <string name="neighbor_right">الجار الأيمن</string>
     <string name="neighbor_left">الجار الأيسر</string>
     <string name="shop_description">وصف المحل</string>
+
+    <!-- الصور -->
+    <string name="photos_section">صور المحل</string>
+    <string name="no_photos">لا توجد صور</string>
+    <string name="take_photo">التقاط صورة</string>
+    <string name="pick_photo">اختيار من المعرض</string>
+    <string name="photo_saved">تم حفظ الصورة</string>
+    <string name="photo_error">خطأ في حفظ الصورة</string>
+    <string name="photos_count">%d صورة</string>
+
+    <!-- النسخ الاحتياطي -->
+    <string name="backup_title">النسخ الاحتياطي</string>
+    <string name="export_backup">تصدير نسخة احتياطية</string>
+    <string name="import_backup">استعادة نسخة احتياطية</string>
+    <string name="backup_success">تم إنشاء النسخة الاحتياطية</string>
+    <string name="restore_success">تم استعادة النسخة الاحتياطية</string>
+    <string name="backup_replace_warning">هل تريد استبدال جميع البيانات الحالية أم إضافة بيانات النسخة؟</string>
 
     <!-- التفاصيل -->
     <string name="taxpayer_details">تفاصيل المكلف</string>

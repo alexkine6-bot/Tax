@@ -200,6 +200,22 @@
                 android:textColor="@color/primary"
                 android:layout_marginBottom="@dimen/margin_medium" />
 
+            <!-- رقم العقار -->
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/margin_medium"
+                android:hint="@string/property_number">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etPropertyNumber"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
             <!-- الجار الأيمن -->
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -265,6 +281,64 @@
                     android:minLines="3" />
 
             </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- === قسم الصور === -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/photos_section"
+                android:textSize="@dimen/text_size_subtitle"
+                android:textStyle="bold"
+                android:textColor="@color/primary"
+                android:layout_marginBottom="@dimen/margin_medium" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_location_section"
+                android:padding="@dimen/padding_normal"
+                android:layout_marginBottom="@dimen/margin_normal">
+
+                <!-- عدد الصور الحالية -->
+                <TextView
+                    android:id="@+id/tvPhotoCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/no_photos"
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="@color/textSecondary"
+                    android:layout_marginBottom="@dimen/margin_medium" />
+
+                <!-- أزرار الصور -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnTakePhoto"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:text="@string/take_photo"
+                        android:textSize="@dimen/text_size_small" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnPickPhoto"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:text="@string/pick_photo"
+                        android:textSize="@dimen/text_size_small" />
+
+                </LinearLayout>
+
+            </LinearLayout>
 
             <!-- === قسم الموقع GPS === -->
             <TextView

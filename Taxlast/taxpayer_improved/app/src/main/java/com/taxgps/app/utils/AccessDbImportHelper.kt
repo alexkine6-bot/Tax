@@ -169,31 +169,63 @@ class AccessDbImportHelper(
     /**
      * تحليل ملف Access واستخراج سجلات المكلفين
      *
-     * الاستراتيجية: البحث عن أنماط البيانات المعروفة
-     * - التواريخ بتنسيق dd/mm/yyyy أو dd\mm\yyyy
-     * - الأسماء العربية متبوعة بأرقام
-     * - عناوين معروفة (القطيلبية، الصليب، إلخ)
+     * استراتيجية محسّنة v2: قراءة متعددة المحاولات
+     * 1. محاولة قراءة كـ UTF-16LE (التنسيق الداخلي لـ Access)
+     * 2. محاولة قراءة كـ UTF-8
+     * 3. استخدام أنماط regex أوسع لالتقاط أكبر عدد ممكن
+     * 4. عدم فرض تطابق العنوان مع قائمة محددة
      */
     private fun extractRecords(data: ByteArray): List<AccessRecord> {
         val records = mutableListOf<AccessRecord>()
 
-        // قراءة كنص UTF-16LE (تنسيق Access الداخلي)
-        val text = String(data, Charset.forName("UTF-16LE"))
+        // محاولة 1: UTF-16LE
+        try {
+            val text16 = String(data, Charset.forName("UTF-16LE"))
+            extractFromText(text16, records)
+        } catch (e: Exception) {
+            Log.w(TAG, "UTF-16LE failed: ${e.message}")
+        }
 
-        // استراتيجية 1: البحث عن أنماط السجلات
-        // كل سجل يحتوي: اسم عربي + رقم سجل + تاريخ + أرقام + نوع(حديث/دورة) + مهنة + عنوان
+        // محاولة 2: UTF-8
+        if (records.size < 50) {  // إذا لم نجد كثيراً
+            try {
+                val text8 = String(data, Charsets.UTF_8)
+                extractFromText(text8, records)
+            } catch (e: Exception) {
+                Log.w(TAG, "UTF-8 failed: ${e.message}")
+            }
+        }
 
-        // نمط: تاريخ بصيغة dd/mm/yyyy أو dd\mm\yyyy
-        val datePattern = Regex("""(\d{1,2})[/\\](\d{1,2})[/\\](\d{4})""")
+        // محاولة 3: Windows-1256 (ترميز عربي شائع)
+        if (records.size < 50) {
+            try {
+                val textAr = String(data, Charset.forName("windows-1256"))
+                extractFromText(textAr, records)
+            } catch (e: Exception) {
+                Log.w(TAG, "Windows-1256 failed: ${e.message}")
+            }
+        }
 
-        // نمط: نص عربي (اسم) متبوع بأرقام ثم تاريخ
-        // من التحليل السابق رأينا: "اسم المكلف" + "رقم السجل" + "تاريخ" + "أرقام" + "ملاحظات" + "مهنة" + "عنوان"
-        val recordPattern = Regex(
+        // إزالة التكرارات
+        val unique = records
+            .groupBy { "${it.recordNumber}_${it.name.take(10)}" }
+            .map { (_, group) -> group.maxByOrNull { it.completeness() } ?: group.first() }
+            .sortedBy { it.recordNumber }
+
+        Log.i(TAG, "Total unique records: ${unique.size}")
+        return unique
+    }
+
+    /**
+     * استخراج السجلات من نص — أنماط regex موسّعة
+     */
+    private fun extractFromText(text: String, records: MutableList<AccessRecord>) {
+        // نمط 1: اسم عربي + رقم + تاريخ + (حديث|دورة) + مهنة + عنوان
+        val pattern1 = Regex(
             """([\u0600-\u06FF\s]{4,50}?)(\d{1,5})\s{0,5}(\d{1,2}[/\\]\d{1,2}[/\\]\d{4})(\d{2,15})(حديث|دورة)\s+(\d{4})([\u0600-\u06FF\s\-]{2,40}?)(القطيلبية|الصليب|الدالية|طوق جبلة|قرى المركز|قرى مركز|قر المركز|سيانو|عين شقاق|عرب الملك|مفرق العقيبة)"""
         )
 
-        val matches = recordPattern.findAll(text)
-        for (match in matches) {
+        for (match in pattern1.findAll(text)) {
             try {
                 val name = match.groupValues[1].trim()
                 val recordNum = match.groupValues[2].trim().toIntOrNull() ?: 0
@@ -203,85 +235,61 @@ class AccessDbImportHelper(
                 val noteYear = match.groupValues[6].trim()
                 val profession = match.groupValues[7].trim()
                 val address = match.groupValues[8].trim()
-
-                // تحليل الأرقام المتسلسلة
-                // من البيانات: "1584009920000992000" → tax=1584, work=00992, profit=992000
                 val parsed = parseNumbers(numbers)
 
                 if (name.length >= 4 && recordNum > 0) {
-                    records.add(AccessRecord(
-                        recordNumber = recordNum,
-                        name         = name,
-                        motherName   = "",  // سيتم استخراجه لاحقاً
-                        decisionNo   = "",
-                        decisionDate = date,
-                        notes        = "$noteType $noteYear",
-                        profession   = profession,
-                        address      = address,
-                        taxAmount    = parsed.taxAmount,
-                        workNumber   = parsed.workNumber,
-                        netProfit    = parsed.netProfit
-                    ))
+                    records.add(AccessRecord(recordNum, name, "", "", date,
+                        "$noteType $noteYear", profession, address,
+                        parsed.taxAmount, parsed.workNumber, parsed.netProfit))
                 }
-            } catch (e: Exception) {
-                Log.v(TAG, "Failed to parse match: ${e.message}")
-            }
+            } catch (e: Exception) { /* skip */ }
         }
 
-        // استراتيجية 2: نمط بديل يشمل اسم الأم
-        // "اسم المكلف" + "اسم الأم" + "رقم السجل" + "تاريخ" ...
-        val altPattern = Regex(
-            """([\u0600-\u06FF\s]{4,40}?)([\u0600-\u06FF]{3,15})(\d{1,5})(\d{1,2}[/\\]\d{1,2}[/\\]\d{4})\d{1,2}[/\\]\d{1,2}[/\\]\d{4}\s*(?:طي القرار بالرقم\s*|)(\d{1,6})"""
+        // نمط 2: أبسط — اسم عربي + رقم سجل + تاريخ (بدون فرض عنوان)
+        val pattern2 = Regex(
+            """([\u0600-\u06FF][\u0600-\u06FF\s]{3,45}?)\s+(\d{1,5})\s+(\d{1,2}[/\\]\d{1,2}[/\\]\d{4})\s+([\u0600-\u06FF\s]{2,30})"""
         )
 
-        val altMatches = altPattern.findAll(text)
-        for (match in altMatches) {
+        for (match in pattern2.findAll(text)) {
             try {
                 val name = match.groupValues[1].trim()
-                val motherName = match.groupValues[2].trim()
-                val recordNum = match.groupValues[3].trim().toIntOrNull() ?: 0
-                val date = match.groupValues[4].trim()
-                val decisionNo = match.groupValues[5].trim()
+                val recordNum = match.groupValues[2].trim().toIntOrNull() ?: 0
+                val date = match.groupValues[3].trim()
+                val extra = match.groupValues[4].trim()
 
-                // تحقق أن هذا السجل ليس مكرراً
                 if (name.length >= 4 && recordNum > 0) {
-                    val existing = records.find { it.recordNumber == recordNum && it.name == name }
-                    if (existing != null) {
-                        // تحديث اسم الأم ورقم القرار
-                        val idx = records.indexOf(existing)
-                        records[idx] = existing.copy(
-                            motherName = motherName,
-                            decisionNo = decisionNo
-                        )
-                    } else {
-                        records.add(AccessRecord(
-                            recordNumber = recordNum,
-                            name         = name,
-                            motherName   = motherName,
-                            decisionNo   = decisionNo,
-                            decisionDate = date,
-                            notes        = "",
-                            profession   = "",
-                            address      = "",
-                            taxAmount    = 0,
-                            workNumber   = "",
-                            netProfit    = 0
-                        ))
+                    // تجنب التكرار
+                    val exists = records.any { it.recordNumber == recordNum && it.name.take(8) == name.take(8) }
+                    if (!exists) {
+                        records.add(AccessRecord(recordNum, name, "", "", date,
+                            "", extra, "", 0, "", 0))
                     }
                 }
-            } catch (e: Exception) {
-                Log.v(TAG, "Alt pattern failed: ${e.message}")
-            }
+            } catch (e: Exception) { /* skip */ }
         }
 
-        // إزالة التكرارات (نفس رقم السجل + نفس الاسم)
-        val unique = records
-            .groupBy { "${it.recordNumber}_${it.name}" }
-            .map { (_, group) -> group.maxByOrNull { it.completeness() } ?: group.first() }
-            .sortedBy { it.recordNumber }
+        // نمط 3: أسماء عربية مع أرقام (أوسع)
+        val pattern3 = Regex(
+            """([\u0600-\u06FF][\u0600-\u06FF\s]{5,40})\s+(\d{1,5})\s+(\d{1,2}[/\\]\d{1,2}[/\\]\d{4})"""
+        )
 
-        Log.i(TAG, "Total unique records: ${unique.size}")
-        return unique
+        for (match in pattern3.findAll(text)) {
+            try {
+                val name = match.groupValues[1].trim()
+                val recordNum = match.groupValues[2].trim().toIntOrNull() ?: 0
+                val date = match.groupValues[3].trim()
+
+                if (name.length >= 5 && recordNum > 0 && !name.contains("جدول") && !name.contains("سجلات")) {
+                    val exists = records.any { it.recordNumber == recordNum && it.name.take(8) == name.take(8) }
+                    if (!exists) {
+                        records.add(AccessRecord(recordNum, name, "", "", date,
+                            "", "", "", 0, "", 0))
+                    }
+                }
+            } catch (e: Exception) { /* skip */ }
+        }
+
+        Log.i(TAG, "extractFromText: found ${records.size} records total")
     }
 
     /**
